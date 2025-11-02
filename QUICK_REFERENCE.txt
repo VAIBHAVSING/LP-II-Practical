@@ -1,0 +1,197 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                   QUIZMASTER v2.0 - QUICK REFERENCE                  ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+📦 REPOSITORY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+URL:     https://github.com/VAIBHAVSING/LP-II-Practical
+Status:  Public
+License: MIT
+Version: v2.0.0
+
+
+🚀 QUICK SETUP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. git clone https://github.com/VAIBHAVSING/LP-II-Practical.git
+2. cd LP-II-Practical
+3. npm install
+4. cp .env.example .env
+5. [Edit .env with MongoDB URI]
+6. npm start
+7. npm run seed
+8. Open http://localhost:3000
+
+
+📁 PROJECT STRUCTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Root Files:
+├── index.html              Home page
+├── about.html              About page
+├── contact.html            Contact page
+├── events.html             Quiz listing
+├── register.html           Registration form
+├── server.js               Backend (MongoDB)
+├── package.json            Dependencies
+├── .env.example            Config template
+└── LICENSE                 MIT License
+
+Admin:
+├── admin/login.html        Admin login
+└── admin/dashboard.html    Admin panel
+
+Assets:
+├── css/style.css           Styles + theme
+├── js/main.js              Common + theme toggle
+├── js/events.js            Quiz display
+├── js/validation.js        Form validation
+└── js/admin.js             Admin functions
+
+Documentation:
+├── README.md               Full documentation
+├── SETUP_GUIDE.md          Setup instructions
+├── COMPLETION_SUMMARY.md   Project overview
+└── QUICK_REFERENCE.txt     This file
+
+
+🔐 CREDENTIALS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Admin Login:
+URL:      http://localhost:3000/admin/login.html
+Email:    admin@quizmaster.com
+Password: admin123
+
+
+🌐 API ENDPOINTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GET     /api/health                    Health check
+GET     /api/quizzes                   Get all quizzes
+GET     /api/quizzes/:id               Get single quiz
+POST    /api/quizzes                   Create quiz
+PUT     /api/quizzes/:id               Update quiz
+DELETE  /api/quizzes/:id               Delete quiz
+POST    /api/register                  Register student
+GET     /api/registrations             Get all registrations
+GET     /api/registrations/quiz/:id    Get by quiz
+POST    /api/admin/login               Admin login
+GET     /api/admin/stats               Dashboard stats
+POST    /api/seed                      Seed sample data
+
+
+🎨 THEME TOGGLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Click moon/sun icon in navbar
+• Switches between light/dark mode
+• Saved in localStorage
+• Works on all pages
+
+
+📦 NPM COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+npm install          Install dependencies
+npm start            Start production server
+npm run dev          Start with auto-reload
+npm run seed         Seed sample data
+
+
+🗄️ MONGODB SETUP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Go to: https://www.mongodb.com/cloud/atlas
+2. Sign up (FREE M0 tier)
+3. Create cluster (3-5 min)
+4. Create database user
+5. Whitelist IP: 0.0.0.0/0
+6. Get connection string
+7. Add to .env file:
+   MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/
+
+
+⚙️ ENVIRONMENT VARIABLES (.env)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MONGODB_URI=your_mongodb_atlas_uri
+DB_NAME=quizmaster
+PORT=3000
+NODE_ENV=development
+ADMIN_EMAIL=admin@quizmaster.com
+ADMIN_PASSWORD=admin123
+SESSION_SECRET=your_secret
+CORS_ORIGIN=http://localhost:3000
+
+
+🔧 TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Problem: MongoDB connection error
+Fix: Check .env file, verify MongoDB URI, whitelist IP
+
+Problem: Port 3000 in use
+Fix: Change PORT in .env or kill process: lsof -ti:3000 | xargs kill
+
+Problem: Cannot find module
+Fix: Run npm install
+
+Problem: Theme not working
+Fix: Hard refresh (Ctrl+F5), check browser console
+
+
+📊 COLLECTIONS (MongoDB)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+quizzes:         Quiz data (title, category, difficulty, etc.)
+registrations:   Student registrations (name, email, quiz, etc.)
+admin_users:     Admin accounts (email, password, role)
+
+
+✨ KEY FEATURES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✓ Dark/Light theme toggle
+✓ MongoDB Atlas cloud database
+✓ Responsive Bootstrap design
+✓ Search & filter quizzes
+✓ Form validation
+✓ Admin CRUD operations
+✓ Dashboard statistics
+✓ RESTful API
+✓ Environment config
+✓ MIT License
+
+
+🎓 FOR ASSIGNMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Submit:
+1. GitHub link: https://github.com/VAIBHAVSING/LP-II-Practical
+2. Screenshots (light & dark theme)
+3. Demo video (optional)
+
+Present:
+1. Show theme toggle
+2. Demonstrate search/filter
+3. Show form validation
+4. Admin dashboard CRUD
+5. Explain MongoDB Atlas
+
+
+📞 SUPPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Repository: https://github.com/VAIBHAVSING/LP-II-Practical
+Issues:     https://github.com/VAIBHAVSING/LP-II-Practical/issues
+Docs:       See README.md and SETUP_GUIDE.md
+
+
+✅ CHECKLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+☑ Clone repository
+☑ Install dependencies
+☑ Setup MongoDB Atlas
+☑ Configure .env
+☑ Start server
+☑ Seed data
+☑ Test features
+☑ Take screenshots
+
+
+🎊 SUCCESS!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Project Status: ✓ Complete
+Version: v2.0.0
+License: MIT
+Ready for: Submission & Deployment
+
+Good luck with your assignment! 🚀
