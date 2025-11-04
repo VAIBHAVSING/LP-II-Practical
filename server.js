@@ -26,6 +26,8 @@ async function connectDB() {
         // Create indexes for better performance
         await db.collection('quizzes').createIndex({ title: 'text', description: 'text' });
         await db.collection('registrations').createIndex({ email: 1 });
+        await db.collection('students').createIndex({ email: 1 }, { unique: true });
+        await db.collection('admin_users').createIndex({ email: 1 }, { unique: true });
     } catch (error) {
         console.error('❌ MongoDB connection error:', error);
         console.log('⚠️  Make sure to set MONGODB_URI in .env file');
@@ -178,6 +180,148 @@ app.get('/api/registrations/quiz/:quizId', async (req, res) => {
         res.json(registrations);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch registrations' });
+    }
+});
+
+// Student registration
+app.post('/api/student/register', async (req, res) => {
+    try {
+        const { firstName, lastName, email, password, mobile, dob, college, course, year } = req.body;
+        if (!firstName || !lastName || !email || !password || !mobile) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        
+        const existing = await db.collection('students').findOne({ email });
+        if (existing) return res.status(400).json({ error: 'Email already registered' });
+        
+        const newStudent = {
+            firstName, lastName, email, password, mobile,
+            dob: dob || null, college: college || '', course: course || '', year: year || '',
+            role: 'student',
+            createdAt: new Date(),
+            updatedAt: new Date()
+        };
+        
+        const result = await db.collection('students').insertOne(newStudent);
+        res.status(201).json({ 
+            message: 'Registration successful', 
+            student: { id: result.insertedId, email: newStudent.email, firstName: newStudent.firstName, lastName: newStudent.lastName }
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to register' });
+    }
+});
+
+// Check if email exists
+app.post('/api/student/check-email', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const existing = await db.collection('students').findOne({ email });
+        res.json({ exists: !!existing });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to check email' });
+    }
+});
+
+// Student login
+app.post('/api/student/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const student = await db.collection('students').findOne({ email });
+        if (!student || student.password !== password) {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
+        res.json({ 
+            message: 'Login successful', 
+            student: { 
+                id: student._id, 
+                email: student.email, 
+                firstName: student.firstName, 
+                lastName: student.lastName,
+                college: student.college,
+                course: student.course,
+                year: student.year
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Login failed' });
+    }
+});
+
+// Get student profile
+app.get('/api/student/profile/:id', async (req, res) => {
+    try {
+        const student = await db.collection('students').findOne({ _id: new ObjectId(req.params.id) });
+        if (!student) return res.status(404).json({ error: 'Student not found' });
+        
+        const { password, ...studentData } = student;
+        res.json(studentData);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch profile' });
+    }
+});
+
+// Change student password
+app.post('/api/student/change-password', async (req, res) => {
+    try {
+        const { studentId, currentPassword, newPassword } = req.body;
+        
+        const student = await db.collection('students').findOne({ _id: new ObjectId(studentId) });
+        if (!student || student.password !== currentPassword) {
+            return res.status(401).json({ error: 'Current password is incorrect' });
+        }
+        
+        await db.collection('students').updateOne(
+            { _id: new ObjectId(studentId) },
+            { $set: { password: newPassword, updatedAt: new Date() }}
+        );
+        
+        res.json({ message: 'Password changed successfully' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to change password' });
+    }
+});
+
+// Admin registration
+app.post('/api/admin/register', async (req, res) => {
+    try {
+        const { name, email, password, department } = req.body;
+        if (!name || !email || !password) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        
+        const existing = await db.collection('admin_users').findOne({ email });
+        if (existing) return res.status(400).json({ error: 'Email already registered' });
+        
+        const newAdmin = {
+            name,
+            email,
+            password,
+            department: department || '',
+            role: 'admin',
+            status: 'active',
+            createdAt: new Date(),
+            updatedAt: new Date()
+        };
+        
+        const result = await db.collection('admin_users').insertOne(newAdmin);
+        res.status(201).json({ 
+            message: 'Admin registration successful', 
+            admin: { id: result.insertedId, email: newAdmin.email, name: newAdmin.name }
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to register admin' });
+    }
+});
+
+// Check if admin email exists
+app.post('/api/admin/check-email', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const existing = await db.collection('admin_users').findOne({ email });
+        res.json({ exists: !!existing });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to check email' });
     }
 });
 
