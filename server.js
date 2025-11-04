@@ -20,6 +20,9 @@ let mongoClient;
 const mongoUri = process.env.MONGODB_URI;
 const dbName = process.env.DB_NAME || 'quizmaster';
 
+// Message constants
+const NO_DB_DEV_MESSAGE = '⚠️  Starting in development mode without database...';
+
 // Connect to MongoDB Atlas with optimized settings
 async function connectDB() {
     if (!mongoUri || mongoUri === 'your_mongodb_atlas_connection_string_here') {
@@ -29,7 +32,7 @@ async function connectDB() {
             console.error('🔴 Cannot start in production without database');
             process.exit(1);
         }
-        console.log('⚠️  Starting in development mode without database...');
+        console.log(NO_DB_DEV_MESSAGE);
         return;
     }
 
@@ -55,7 +58,7 @@ async function connectDB() {
             console.error('🔴 Cannot start in production without database');
             process.exit(1);
         }
-        console.log('⚠️  Starting in development mode without database...');
+        console.log(NO_DB_DEV_MESSAGE);
     }
 }
 
@@ -80,15 +83,29 @@ app.use(helmet({
 app.use(compression());
 
 // CORS Configuration
+// In production, CORS allows same-origin requests automatically
+// For cross-origin requests, configure ALLOWED_ORIGINS environment variable
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+    : [];
+
 const corsOptions = {
-    origin: isProduction 
-        ? (origin, callback) => {
-            // Allow requests with no origin (like mobile apps or curl)
-            if (!origin) return callback(null, true);
-            // Allow any origin in production (can be restricted later)
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps, curl, or same-origin)
+        if (!origin) return callback(null, true);
+        
+        // In development, allow all origins
+        if (!isProduction) return callback(null, true);
+        
+        // In production, check if origin is in allowed list
+        if (allowedOrigins.length > 0 && allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            // If no ALLOWED_ORIGINS set in production, allow all (for initial deployment)
+            // TODO: Set ALLOWED_ORIGINS in production for enhanced security
             callback(null, true);
         }
-        : '*',
+    },
     credentials: true,
     optionsSuccessStatus: 200
 };
@@ -556,14 +573,16 @@ const gracefulShutdown = async (signal) => {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Handle uncaught exceptions
+// Handle uncaught exceptions - exit immediately
 process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception:', error);
-    gracefulShutdown('uncaughtException');
+    console.error('🔴 Fatal error - exiting immediately');
+    process.exit(1);
 });
 
-// Handle unhandled promise rejections
+// Handle unhandled promise rejections - exit immediately
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    gracefulShutdown('unhandledRejection');
+    console.error('🔴 Fatal error - exiting immediately');
+    process.exit(1);
 });

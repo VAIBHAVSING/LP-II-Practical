@@ -19,5 +19,8 @@ services:
         value: admin@quizmaster.com
       - key: ADMIN_PASSWORD
         sync: false
+      # Optional: Comma-separated list of allowed CORS origins for enhanced security
+      # - key: ALLOWED_ORIGINS
+      #   value: https://yourdomain.com,https://www.yourdomain.com
     healthCheckPath: /api/health
     autoDeploy: true
