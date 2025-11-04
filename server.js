@@ -138,11 +138,33 @@ const authLimiter = rateLimit({
 // Apply rate limiting to API routes
 app.use('/api/', limiter);
 
+// Block access to sensitive files and directories
+app.use((req, res, next) => {
+    const blockedPaths = [
+        '/node_modules',
+        '/.env',
+        '/.git',
+        '/package.json',
+        '/package-lock.json',
+        '/server.js',
+        '/.gitignore'
+    ];
+    
+    if (blockedPaths.some(path => req.path.startsWith(path))) {
+        return res.status(403).json({ error: 'Access denied' });
+    }
+    next();
+});
+
 // Static Files with caching
+// Note: Serves root directory for HTML files. Sensitive files are blocked above
+// and not included in deployment (.env, .git, node_modules are in .gitignore)
 app.use(express.static(__dirname, {
     maxAge: isProduction ? '1d' : 0,
     etag: true,
-    lastModified: true
+    lastModified: true,
+    dotfiles: 'deny', // Deny access to dotfiles like .env
+    index: false // Disable directory indexing for security
 }));
 
 // Middleware to check database connection
