@@ -60,13 +60,18 @@ QuizMaster is a comprehensive online quiz platform designed for educational inst
 
 ### Technical Features
 - ✅ Node.js + Express backend
-- ✅ MongoDB Atlas cloud database
+- ✅ MongoDB Atlas cloud database with connection pooling
 - ✅ RESTful API with proper error handling
 - ✅ Client-side and server-side validation
 - ✅ Responsive Bootstrap 5 design
 - ✅ Theme persistence with localStorage
 - ✅ Optimized database queries with indexes
 - ✅ Environment-based configuration
+- ✅ **Production-Ready**: Compression, caching, security headers
+- ✅ **Security**: Rate limiting, input sanitization, helmet protection
+- ✅ **Performance**: Response compression, static file caching
+- ✅ **Reliability**: Graceful shutdown, health checks, error recovery
+- ✅ **Deployment**: Render-optimized with dynamic API configuration
 
 ---
 
@@ -411,6 +416,28 @@ npm test  # (if you add test scripts)
 
 ## 🚀 Deployment
 
+### Deploy to Render (Recommended) ⭐
+
+QuizMaster is optimized for deployment on Render's free tier with automatic HTTPS and continuous deployment.
+
+**Quick Deploy:**
+1. Push your code to GitHub
+2. Sign up at [Render](https://render.com)
+3. Create a new Web Service
+4. Connect your GitHub repository
+5. Set environment variables (MONGODB_URI, NODE_ENV=production)
+6. Deploy!
+
+**📖 [Complete Render Deployment Guide](./RENDER_DEPLOYMENT.md)**
+
+**Features:**
+- ✅ Free tier available (750 hours/month)
+- ✅ Automatic HTTPS/SSL certificates
+- ✅ Auto-deploy from GitHub
+- ✅ Built-in health checks
+- ✅ Environment variables management
+- ✅ Real-time logs and metrics
+
 ### Deploy to Heroku
 
 ```bash
@@ -424,6 +451,7 @@ heroku create your-app-name
 # Set environment variables
 heroku config:set MONGODB_URI=your_mongodb_uri
 heroku config:set DB_NAME=quizmaster
+heroku config:set NODE_ENV=production
 
 # Deploy
 git push heroku main

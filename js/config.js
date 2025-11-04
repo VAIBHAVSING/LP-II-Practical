@@ -1,6 +1,17 @@
-// API Configuration
+// API Configuration with dynamic BASE_URL
+// Automatically detects production vs development environment
+const getBaseUrl = () => {
+    // Check if we're in production (deployed)
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        // Use the same origin as the current page (for Render deployment)
+        return window.location.origin;
+    }
+    // Default to localhost for development
+    return 'http://localhost:3000';
+};
+
 const API_CONFIG = {
-    BASE_URL: 'http://localhost:3000',
+    BASE_URL: getBaseUrl(),
     ENDPOINTS: {
         // Admin endpoints
         ADMIN_LOGIN: '/api/admin/login',

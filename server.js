@@ -3,25 +3,49 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const { MongoClient, ObjectId } = require('mongodb');
+const compression = require('compression');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const isProduction = NODE_ENV === 'production';
 
 // MongoDB Connection
 let db;
+let mongoClient;
 const mongoUri = process.env.MONGODB_URI;
 const dbName = process.env.DB_NAME || 'quizmaster';
 
-// Connect to MongoDB Atlas
+// Message constants
+const NO_DB_DEV_MESSAGE = '⚠️  Starting in development mode without database...';
+
+// Connect to MongoDB Atlas with optimized settings
 async function connectDB() {
+    if (!mongoUri || mongoUri === 'your_mongodb_atlas_connection_string_here') {
+        console.error('❌ MongoDB URI not configured');
+        console.log('⚠️  Set MONGODB_URI in .env file or environment variables');
+        if (isProduction) {
+            console.error('🔴 Cannot start in production without database');
+            process.exit(1);
+        }
+        console.log(NO_DB_DEV_MESSAGE);
+        return;
+    }
+
     try {
-        const client = await MongoClient.connect(mongoUri, { 
-            useNewUrlParser: true, 
-            useUnifiedTopology: true 
+        mongoClient = await MongoClient.connect(mongoUri, { 
+            maxPoolSize: 10,
+            minPoolSize: 2,
+            maxIdleTimeMS: 30000,
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
         });
         console.log('✅ Connected to MongoDB Atlas');
-        db = client.db(dbName);
+        db = mongoClient.db(dbName);
         
         // Create indexes for better performance
         await db.collection('quizzes').createIndex({ title: 'text', description: 'text' });
@@ -29,31 +53,144 @@ async function connectDB() {
         await db.collection('students').createIndex({ email: 1 }, { unique: true });
         await db.collection('admin_users').createIndex({ email: 1 }, { unique: true });
     } catch (error) {
-        console.error('❌ MongoDB connection error:', error);
-        console.log('⚠️  Make sure to set MONGODB_URI in .env file');
-        process.exit(1);
+        console.error('❌ MongoDB connection error:', error.message);
+        if (isProduction) {
+            console.error('🔴 Cannot start in production without database');
+            process.exit(1);
+        }
+        console.log(NO_DB_DEV_MESSAGE);
     }
 }
 
 connectDB();
 
-// Middleware
-app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static(__dirname));
+// Security Middleware - Helmet with CSP configuration
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"],
+            fontSrc: ["'self'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"],
+            imgSrc: ["'self'", "data:", "https:"],
+            connectSrc: ["'self'"]
+        }
+    },
+    crossOriginEmbedderPolicy: false
+}));
+
+// Compression Middleware for response optimization
+app.use(compression());
+
+// CORS Configuration
+// In production, CORS allows same-origin requests automatically
+// For cross-origin requests, configure ALLOWED_ORIGINS environment variable
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+    : [];
+
+const corsOptions = {
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps, curl, or same-origin)
+        if (!origin) return callback(null, true);
+        
+        // In development, allow all origins
+        if (!isProduction) return callback(null, true);
+        
+        // In production, check if origin is in allowed list
+        if (allowedOrigins.length > 0 && allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            // If no ALLOWED_ORIGINS set in production, allow all (for initial deployment)
+            // TODO: Set ALLOWED_ORIGINS in production for enhanced security
+            callback(null, true);
+        }
+    },
+    credentials: true,
+    optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
+
+// Body Parser Middleware
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+
+// Sanitize data to prevent MongoDB Operator Injection
+app.use(mongoSanitize());
+
+// Rate Limiting
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: 'Too many requests from this IP, please try again later.'
+});
+
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // Limit each IP to 5 login attempts per windowMs
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: 'Too many login attempts, please try again later.'
+});
+
+// Apply rate limiting to API routes
+app.use('/api/', limiter);
+
+// Block access to sensitive files and directories
+app.use((req, res, next) => {
+    const blockedPaths = [
+        '/node_modules',
+        '/.env',
+        '/.git',
+        '/package.json',
+        '/package-lock.json',
+        '/server.js',
+        '/.gitignore'
+    ];
+    
+    if (blockedPaths.some(path => req.path.startsWith(path))) {
+        return res.status(403).json({ error: 'Access denied' });
+    }
+    next();
+});
+
+// Static Files with caching
+// Note: Serves root directory for HTML files. Sensitive files are blocked above
+// and not included in deployment (.env, .git, node_modules are in .gitignore)
+app.use(express.static(__dirname, {
+    maxAge: isProduction ? '1d' : 0,
+    etag: true,
+    lastModified: true,
+    dotfiles: 'deny', // Deny access to dotfiles like .env
+    index: false // Disable directory indexing for security
+}));
+
+// Middleware to check database connection
+const requireDB = (req, res, next) => {
+    if (!db) {
+        return res.status(503).json({ 
+            error: 'Database not available',
+            message: 'The server is running but database connection is not established'
+        });
+    }
+    next();
+};
 
 // Health Check
 app.get('/api/health', (req, res) => {
     res.json({ 
         status: 'OK', 
         message: 'Server is running',
-        database: db ? 'Connected' : 'Disconnected'
+        database: db ? 'Connected' : 'Disconnected',
+        environment: NODE_ENV,
+        timestamp: new Date().toISOString()
     });
 });
 
 // Get all quizzes
-app.get('/api/quizzes', async (req, res) => {
+app.get('/api/quizzes', requireDB, async (req, res) => {
     try {
         const quizzes = await db.collection('quizzes').find().sort({ createdAt: -1 }).toArray();
         res.json(quizzes);
@@ -63,7 +200,7 @@ app.get('/api/quizzes', async (req, res) => {
 });
 
 // Get single quiz
-app.get('/api/quizzes/:id', async (req, res) => {
+app.get('/api/quizzes/:id', requireDB, async (req, res) => {
     try {
         const quiz = await db.collection('quizzes').findOne({ _id: new ObjectId(req.params.id) });
         if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
@@ -74,7 +211,7 @@ app.get('/api/quizzes/:id', async (req, res) => {
 });
 
 // Create quiz
-app.post('/api/quizzes', async (req, res) => {
+app.post('/api/quizzes', requireDB, async (req, res) => {
     try {
         const { title, description, category, difficulty, duration, totalQuestions, passingScore, startDate } = req.body;
         if (!title || !category || !difficulty) {
@@ -103,7 +240,7 @@ app.post('/api/quizzes', async (req, res) => {
 });
 
 // Update quiz
-app.put('/api/quizzes/:id', async (req, res) => {
+app.put('/api/quizzes/:id', requireDB, async (req, res) => {
     try {
         const { title, description, category, difficulty, duration, totalQuestions, passingScore, startDate, status } = req.body;
         const updateData = {
@@ -128,7 +265,7 @@ app.put('/api/quizzes/:id', async (req, res) => {
 });
 
 // Delete quiz
-app.delete('/api/quizzes/:id', async (req, res) => {
+app.delete('/api/quizzes/:id', requireDB, async (req, res) => {
     try {
         const result = await db.collection('quizzes').deleteOne({ _id: new ObjectId(req.params.id) });
         if (result.deletedCount === 0) return res.status(404).json({ error: 'Quiz not found' });
@@ -139,7 +276,7 @@ app.delete('/api/quizzes/:id', async (req, res) => {
 });
 
 // Register for quiz
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', requireDB, async (req, res) => {
     try {
         const { firstName, lastName, email, mobile, dob, college, course, year, quizId } = req.body;
         if (!firstName || !lastName || !email || !mobile || !quizId) {
@@ -184,7 +321,7 @@ app.get('/api/registrations/quiz/:quizId', async (req, res) => {
 });
 
 // Student registration
-app.post('/api/student/register', async (req, res) => {
+app.post('/api/student/register', requireDB, async (req, res) => {
     try {
         const { firstName, lastName, email, password, mobile, dob, college, course, year } = req.body;
         if (!firstName || !lastName || !email || !password || !mobile) {
@@ -223,10 +360,13 @@ app.post('/api/student/check-email', async (req, res) => {
     }
 });
 
-// Student login
-app.post('/api/student/login', async (req, res) => {
+// Student login (with rate limiting)
+app.post('/api/student/login', requireDB, authLimiter, async (req, res) => {
     try {
         const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password are required' });
+        }
         const student = await db.collection('students').findOne({ email });
         if (!student || student.password !== password) {
             return res.status(401).json({ error: 'Invalid email or password' });
@@ -244,6 +384,7 @@ app.post('/api/student/login', async (req, res) => {
             }
         });
     } catch (error) {
+        console.error('Student login error:', error);
         res.status(500).json({ error: 'Login failed' });
     }
 });
@@ -325,22 +466,26 @@ app.post('/api/admin/check-email', async (req, res) => {
     }
 });
 
-// Admin login
-app.post('/api/admin/login', async (req, res) => {
+// Admin login (with rate limiting)
+app.post('/api/admin/login', requireDB, authLimiter, async (req, res) => {
     try {
         const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password are required' });
+        }
         const admin = await db.collection('admin_users').findOne({ email });
         if (!admin || admin.password !== password) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         res.json({ message: 'Login successful', admin: { id: admin._id, email: admin.email, name: admin.name }});
     } catch (error) {
+        console.error('Admin login error:', error);
         res.status(500).json({ error: 'Login failed' });
     }
 });
 
 // Dashboard stats
-app.get('/api/admin/stats', async (req, res) => {
+app.get('/api/admin/stats', requireDB, async (req, res) => {
     try {
         const [totalQuizzes, totalRegistrations, activeQuizzes, recentRegistrations] = await Promise.all([
             db.collection('quizzes').countDocuments(),
@@ -355,7 +500,7 @@ app.get('/api/admin/stats', async (req, res) => {
 });
 
 // Seed database
-app.post('/api/seed', async (req, res) => {
+app.post('/api/seed', requireDB, async (req, res) => {
     try {
         const count = await db.collection('quizzes').countDocuments();
         if (count > 0) return res.json({ message: 'Database already seeded' });
@@ -392,16 +537,74 @@ app.post('/api/seed', async (req, res) => {
 
 app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 
-app.listen(PORT, () => {
+// 404 Handler
+app.use((req, res) => {
+    res.status(404).json({ error: 'Route not found' });
+});
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err);
+    res.status(500).json({ 
+        error: isProduction ? 'Internal server error' : err.message 
+    });
+});
+
+const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`
 ╔═══════════════════════════════════════╗
 ║   🚀 QuizMaster Server Running!      ║
 ╠═══════════════════════════════════════╣
 ║   📍 Port: ${PORT}                      ║
-║   🌐 URL: http://localhost:${PORT}      ║
+║   🌐 Environment: ${NODE_ENV}          ║
 ║   📊 Database: MongoDB Atlas          ║
 ╚═══════════════════════════════════════╝
     `);
+    if (!isProduction) {
+        console.log(`   🌐 URL: http://localhost:${PORT}`);
+    }
 });
 
-process.on('SIGINT', () => { console.log('\n🔴 Shutting down...'); process.exit(0); });
+// Graceful shutdown
+const gracefulShutdown = async (signal) => {
+    console.log(`\n${signal} received. Starting graceful shutdown...`);
+    
+    server.close(async () => {
+        console.log('HTTP server closed');
+        
+        if (mongoClient) {
+            try {
+                await mongoClient.close();
+                console.log('MongoDB connection closed');
+            } catch (error) {
+                console.error('Error closing MongoDB connection:', error);
+            }
+        }
+        
+        console.log('🔴 Shutdown complete');
+        process.exit(0);
+    });
+    
+    // Force close after 10 seconds
+    setTimeout(() => {
+        console.error('Forced shutdown after timeout');
+        process.exit(1);
+    }, 10000);
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle uncaught exceptions - exit immediately
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    console.error('🔴 Fatal error - exiting immediately');
+    process.exit(1);
+});
+
+// Handle unhandled promise rejections - exit immediately
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    console.error('🔴 Fatal error - exiting immediately');
+    process.exit(1);
+});
