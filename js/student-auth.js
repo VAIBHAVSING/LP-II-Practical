@@ -181,7 +181,7 @@ if (document.getElementById('studentRegistrationForm')) {
         
         // Check if email already exists
         try {
-            const response = await fetch('/api/student/check-email', {
+            const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.STUDENT_CHECK_EMAIL), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email })

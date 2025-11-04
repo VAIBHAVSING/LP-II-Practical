@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const student = getStudentInfo();
         
         try {
-            const response = await fetch('/api/student/change-password', {
+            const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.STUDENT_CHANGE_PASSWORD), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

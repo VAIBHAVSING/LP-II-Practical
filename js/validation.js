@@ -286,7 +286,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Send to backend API
         try {
-            const response = await fetch('/api/register', {
+            const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.REGISTER), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(registrationData)

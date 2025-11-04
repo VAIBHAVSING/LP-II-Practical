@@ -84,11 +84,11 @@ document.addEventListener('DOMContentLoaded', function() {
 async function loadDashboardData() {
     try {
         // Fetch quizzes from backend
-        const quizzesResponse = await fetch('/api/quizzes');
+        const quizzesResponse = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.QUIZZES));
         const quizzes = await quizzesResponse.json();
         
         // Fetch registrations from backend
-        const registrationsResponse = await fetch('/api/registrations');
+        const registrationsResponse = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.REGISTRATIONS));
         const registrations = await registrationsResponse.json();
         
         // Update statistics
@@ -109,10 +109,10 @@ async function loadDashboardData() {
 // Load recent registrations for overview
 async async function loadRecentRegistrations() {
     try {
-        const registrationsResponse = await fetch('/api/registrations');
+        const registrationsResponse = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.REGISTRATIONS));
         const registrations = await registrationsResponse.json();
         
-        const quizzesResponse = await fetch('/api/quizzes');
+        const quizzesResponse = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.QUIZZES));
         const quizzes = await quizzesResponse.json();
         
         const tbody = document.querySelector('#recentRegistrationsTable tbody');
@@ -146,7 +146,7 @@ async async function loadRecentRegistrations() {
 // Load all quizzes
 async function loadQuizzes() {
     try {
-        const response = await fetch('/api/quizzes');
+        const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.QUIZZES));
         const quizzes = await response.json();
         
         const tbody = document.getElementById('quizzesTableBody');
@@ -302,7 +302,7 @@ document.getElementById('updateQuizBtn').addEventListener('click', async functio
     };
     
     try {
-        const response = await fetch(`/api/quizzes/${id}`, {
+        const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.QUIZ_BY_ID(id)), {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updatedQuiz)
@@ -335,7 +335,7 @@ async function deleteQuiz(id) {
     }
     
     try {
-        const response = await fetch(`/api/quizzes/${id}`, {
+        const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.QUIZ_BY_ID(id)), {
             method: 'DELETE'
         });
         
@@ -356,10 +356,10 @@ async function deleteQuiz(id) {
 // Load all registrations
 async function loadRegistrations() {
     try {
-        const registrationsResponse = await fetch('/api/registrations');
+        const registrationsResponse = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.REGISTRATIONS));
         const registrations = await registrationsResponse.json();
         
-        const quizzesResponse = await fetch('/api/quizzes');
+        const quizzesResponse = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.QUIZZES));
         const quizzes = await quizzesResponse.json();
         
         const tbody = document.getElementById('registrationsTableBody');

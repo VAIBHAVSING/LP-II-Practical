@@ -123,7 +123,7 @@ if (document.getElementById('adminRegisterForm')) {
         
         // Check if email already exists
         try {
-            const checkResponse = await fetch('/api/admin/check-email', {
+            const checkResponse = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.ADMIN_CHECK_EMAIL), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email })

@@ -7,7 +7,7 @@ let filteredQuizzes = [];
 // Load quizzes from backend
 async function loadQuizzes() {
     try {
-        const response = await fetch('/api/quizzes');
+        const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.QUIZZES));
         quizzes = await response.json();
         filteredQuizzes = [...quizzes];
         
