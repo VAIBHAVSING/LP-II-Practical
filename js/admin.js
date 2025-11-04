@@ -81,82 +81,106 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Load dashboard statistics
-function loadDashboardData() {
-    const quizzes = JSON.parse(localStorage.getItem('quizzes')) || [];
-    const registrations = JSON.parse(localStorage.getItem('registrations')) || [];
-    
-    // Update statistics
-    document.getElementById('totalQuizzes').textContent = quizzes.length;
-    document.getElementById('totalRegistrations').textContent = registrations.length;
-    document.getElementById('activeQuizzes').textContent = quizzes.filter(q => {
-        return new Date(q.date) >= new Date();
-    }).length;
-    
-    // Load recent registrations
-    loadRecentRegistrations();
+async function loadDashboardData() {
+    try {
+        // Fetch quizzes from backend
+        const quizzesResponse = await fetch('/api/quizzes');
+        const quizzes = await quizzesResponse.json();
+        
+        // Fetch registrations from backend
+        const registrationsResponse = await fetch('/api/registrations');
+        const registrations = await registrationsResponse.json();
+        
+        // Update statistics
+        document.getElementById('totalQuizzes').textContent = quizzes.length;
+        document.getElementById('totalRegistrations').textContent = registrations.length;
+        document.getElementById('activeQuizzes').textContent = quizzes.filter(q => {
+            return new Date(q.date) >= new Date();
+        }).length;
+        
+        // Load recent registrations
+        loadRecentRegistrations();
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        showAlert('Failed to load dashboard data', 'danger');
+    }
 }
 
 // Load recent registrations for overview
-function loadRecentRegistrations() {
-    const registrations = JSON.parse(localStorage.getItem('registrations')) || [];
-    const quizzes = JSON.parse(localStorage.getItem('quizzes')) || [];
-    const tbody = document.querySelector('#recentRegistrationsTable tbody');
-    
-    // Get last 5 registrations
-    const recent = registrations.slice(-5).reverse();
-    
-    if (recent.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center">No recent registrations</td></tr>';
-        return;
+async async function loadRecentRegistrations() {
+    try {
+        const registrationsResponse = await fetch('/api/registrations');
+        const registrations = await registrationsResponse.json();
+        
+        const quizzesResponse = await fetch('/api/quizzes');
+        const quizzes = await quizzesResponse.json();
+        
+        const tbody = document.querySelector('#recentRegistrationsTable tbody');
+        
+        // Get last 5 registrations
+        const recent = registrations.slice(-5).reverse();
+        
+        if (recent.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center">No recent registrations</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        recent.forEach(reg => {
+            const quiz = quizzes.find(q => q._id === reg.quizId);
+            const row = `
+                <tr>
+                    <td>${reg.firstName} ${reg.lastName}</td>
+                    <td>${reg.email}</td>
+                    <td>${quiz ? quiz.title : 'N/A'}</td>
+                    <td>${new Date(reg.registrationDate).toLocaleDateString()}</td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+    } catch (error) {
+        console.error('Error loading recent registrations:', error);
     }
-    
-    tbody.innerHTML = '';
-    recent.forEach(reg => {
-        const quiz = quizzes.find(q => q.id === parseInt(reg.quizId));
-        const row = `
-            <tr>
-                <td>${reg.firstName} ${reg.lastName}</td>
-                <td>${reg.email}</td>
-                <td>${quiz ? quiz.title : 'N/A'}</td>
-                <td>${new Date(reg.registrationDate).toLocaleDateString()}</td>
-            </tr>
-        `;
-        tbody.innerHTML += row;
-    });
 }
 
 // Load all quizzes
-function loadQuizzes() {
-    const quizzes = JSON.parse(localStorage.getItem('quizzes')) || [];
-    const tbody = document.getElementById('quizzesTableBody');
-    
-    tbody.innerHTML = '';
-    
-    if (quizzes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No quizzes available</td></tr>';
-        return;
+async function loadQuizzes() {
+    try {
+        const response = await fetch('/api/quizzes');
+        const quizzes = await response.json();
+        
+        const tbody = document.getElementById('quizzesTableBody');
+        tbody.innerHTML = '';
+        
+        if (quizzes.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center">No quizzes available</td></tr>';
+            return;
+        }
+        
+        quizzes.forEach(quiz => {
+            const row = `
+                <tr>
+                    <td>${quiz._id.substring(0, 8)}...</td>
+                    <td>${quiz.title}</td>
+                    <td><span class="badge bg-primary">${quiz.category}</span></td>
+                    <td><span class="badge bg-${getDifficultyColor(quiz.difficulty)}">${quiz.difficulty}</span></td>
+                    <td>${new Date(quiz.date).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" onclick="editQuiz('${quiz._id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteQuiz('${quiz._id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+    } catch (error) {
+        console.error('Error loading quizzes:', error);
+        showAlert('Failed to load quizzes', 'danger');
     }
-    
-    quizzes.forEach(quiz => {
-        const row = `
-            <tr>
-                <td>${quiz.id}</td>
-                <td>${quiz.title}</td>
-                <td><span class="badge bg-primary">${quiz.category}</span></td>
-                <td><span class="badge bg-${getDifficultyColor(quiz.difficulty)}">${quiz.difficulty}</span></td>
-                <td>${quiz.date}</td>
-                <td>
-                    <button class="btn btn-sm btn-warning" onclick="editQuiz(${quiz.id})">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteQuiz(${quiz.id})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-        tbody.innerHTML += row;
-    });
 }
 
 // Get difficulty badge color
@@ -170,73 +194,94 @@ function getDifficultyColor(difficulty) {
 }
 
 // Add new quiz
-document.getElementById('saveQuizBtn').addEventListener('click', function() {
+document.getElementById('saveQuizBtn').addEventListener('click', async function() {
     const title = document.getElementById('quizTitle').value;
     const category = document.getElementById('quizCategory').value;
     const difficulty = document.getElementById('quizDifficulty').value;
     const date = document.getElementById('quizDate').value;
     const description = document.getElementById('quizDescription').value;
+    const duration = document.getElementById('quizDuration')?.value || 45;
+    const totalQuestions = document.getElementById('quizQuestions')?.value || 25;
     
     if (!title || !category || !difficulty || !date) {
-        alert('Please fill in all required fields');
+        showAlert('Please fill in all required fields', 'warning');
         return;
     }
     
-    const quizzes = JSON.parse(localStorage.getItem('quizzes')) || [];
     const newQuiz = {
-        id: quizzes.length > 0 ? Math.max(...quizzes.map(q => q.id)) + 1 : 1,
         title,
         category,
         difficulty,
         date,
         description: description || 'No description provided',
-        duration: '45 mins',
-        questions: 25
+        duration: parseInt(duration),
+        totalQuestions: parseInt(totalQuestions),
+        passingScore: 70
     };
     
-    quizzes.push(newQuiz);
-    localStorage.setItem('quizzes', JSON.stringify(quizzes));
-    
-    // Close modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('addQuizModal'));
-    modal.hide();
-    
-    // Reset form
-    document.getElementById('addQuizForm').reset();
-    
-    // Reload quizzes
-    loadQuizzes();
-    loadDashboardData();
-    
-    alert('Quiz added successfully!');
+    try {
+        const response = await fetch('/api/quizzes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newQuiz)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            
+                    // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addQuizModal'));
+            modal.hide();
+            
+            // Reset form
+            document.getElementById('addQuizForm').reset();
+            
+            // Reload quizzes
+            loadQuizzes();
+            loadDashboardData();
+            
+            showAlert('Quiz added successfully!', 'success');
+        } else {
+            const error = await response.json();
+            showAlert(error.error || 'Failed to add quiz', 'danger');
+        }
+    } catch (error) {
+        console.error('Error adding quiz:', error);
+        showAlert('An error occurred while adding quiz', 'danger');
+    }
 });
 
 // Edit quiz
-function editQuiz(id) {
-    const quizzes = JSON.parse(localStorage.getItem('quizzes')) || [];
-    const quiz = quizzes.find(q => q.id === id);
-    
-    if (!quiz) {
-        alert('Quiz not found');
-        return;
+async function editQuiz(id) {
+    try {
+        const response = await fetch(`/api/quizzes/${id}`);
+        const quiz = await response.json();
+        
+        if (!quiz) {
+            showAlert('Quiz not found', 'warning');
+            return;
+        }
+        
+        // Populate edit form
+        document.getElementById('editQuizId').value = quiz._id;
+        document.getElementById('editQuizTitle').value = quiz.title;
+        document.getElementById('editQuizCategory').value = quiz.category;
+        document.getElementById('editQuizDifficulty').value = quiz.difficulty;
+        document.getElementById('editQuizDate').value = quiz.date.split('T')[0];
+        document.getElementById('editQuizDescription').value = quiz.description;
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('editQuizModal'));
+        modal.show();
+    } catch (error) {
+        console.error('Error loading quiz:', error);
+        showAlert('Failed to load quiz details', 'danger');
     }
-    
-    // Populate edit form
-    document.getElementById('editQuizId').value = quiz.id;
-    document.getElementById('editQuizTitle').value = quiz.title;
-    document.getElementById('editQuizCategory').value = quiz.category;
-    document.getElementById('editQuizDifficulty').value = quiz.difficulty;
-    document.getElementById('editQuizDate').value = quiz.date;
-    document.getElementById('editQuizDescription').value = quiz.description;
-    
-    // Show modal
-    const modal = new bootstrap.Modal(document.getElementById('editQuizModal'));
-    modal.show();
 }
 
 // Update quiz
-document.getElementById('updateQuizBtn').addEventListener('click', function() {
-    const id = parseInt(document.getElementById('editQuizId').value);
+document.getElementById('updateQuizBtn').addEventListener('click', async function() {
+    const id = document.getElementById('editQuizId').value;
     const title = document.getElementById('editQuizTitle').value;
     const category = document.getElementById('editQuizCategory').value;
     const difficulty = document.getElementById('editQuizDifficulty').value;
@@ -244,20 +289,11 @@ document.getElementById('updateQuizBtn').addEventListener('click', function() {
     const description = document.getElementById('editQuizDescription').value;
     
     if (!title || !category || !difficulty || !date) {
-        alert('Please fill in all required fields');
+        showAlert('Please fill in all required fields', 'warning');
         return;
     }
     
-    const quizzes = JSON.parse(localStorage.getItem('quizzes')) || [];
-    const index = quizzes.findIndex(q => q.id === id);
-    
-    if (index === -1) {
-        alert('Quiz not found');
-        return;
-    }
-    
-    quizzes[index] = {
-        ...quizzes[index],
+    const updatedQuiz = {
         title,
         category,
         difficulty,
@@ -265,61 +301,93 @@ document.getElementById('updateQuizBtn').addEventListener('click', function() {
         description
     };
     
-    localStorage.setItem('quizzes', JSON.stringify(quizzes));
-    
-    // Close modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('editQuizModal'));
-    modal.hide();
-    
-    // Reload quizzes
-    loadQuizzes();
-    loadDashboardData();
-    
-    alert('Quiz updated successfully!');
+    try {
+        const response = await fetch(`/api/quizzes/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedQuiz)
+        });
+        
+        if (response.ok) {
+                    // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editQuizModal'));
+            modal.hide();
+            
+            // Reload quizzes
+            loadQuizzes();
+            loadDashboardData();
+            
+            showAlert('Quiz updated successfully!', 'success');
+        } else {
+            const error = await response.json();
+            showAlert(error.error || 'Failed to update quiz', 'danger');
+        }
+    } catch (error) {
+        console.error('Error updating quiz:', error);
+        showAlert('An error occurred while updating quiz', 'danger');
+    }
 });
 
 // Delete quiz
-function deleteQuiz(id) {
+async function deleteQuiz(id) {
     if (!confirm('Are you sure you want to delete this quiz?')) {
         return;
     }
     
-    let quizzes = JSON.parse(localStorage.getItem('quizzes')) || [];
-    quizzes = quizzes.filter(q => q.id !== id);
-    localStorage.setItem('quizzes', JSON.stringify(quizzes));
-    
-    loadQuizzes();
-    loadDashboardData();
-    
-    alert('Quiz deleted successfully!');
+    try {
+        const response = await fetch(`/api/quizzes/${id}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            loadQuizzes();
+            loadDashboardData();
+            showAlert('Quiz deleted successfully!', 'success');
+        } else {
+            const error = await response.json();
+            showAlert(error.error || 'Failed to delete quiz', 'danger');
+        }
+    } catch (error) {
+        console.error('Error deleting quiz:', error);
+        showAlert('An error occurred while deleting quiz', 'danger');
+    }
 }
 
 // Load all registrations
-function loadRegistrations() {
-    const registrations = JSON.parse(localStorage.getItem('registrations')) || [];
-    const quizzes = JSON.parse(localStorage.getItem('quizzes')) || [];
-    const tbody = document.getElementById('registrationsTableBody');
-    const filterSelect = document.getElementById('filterByQuiz');
-    
-    // Populate filter dropdown
-    filterSelect.innerHTML = '<option value="">All Quizzes</option>';
-    quizzes.forEach(quiz => {
-        const option = document.createElement('option');
-        option.value = quiz.id;
-        option.textContent = quiz.title;
-        filterSelect.appendChild(option);
-    });
-    
-    // Display registrations
-    displayRegistrations(registrations, quizzes);
-    
-    // Filter functionality
-    filterSelect.addEventListener('change', function() {
-        const filtered = this.value ? 
-            registrations.filter(r => parseInt(r.quizId) === parseInt(this.value)) : 
-            registrations;
-        displayRegistrations(filtered, quizzes);
-    });
+async function loadRegistrations() {
+    try {
+        const registrationsResponse = await fetch('/api/registrations');
+        const registrations = await registrationsResponse.json();
+        
+        const quizzesResponse = await fetch('/api/quizzes');
+        const quizzes = await quizzesResponse.json();
+        
+        const tbody = document.getElementById('registrationsTableBody');
+        const filterSelect = document.getElementById('filterByQuiz');
+        
+        // Populate filter dropdown
+        filterSelect.innerHTML = '<option value="">All Quizzes</option>';
+        quizzes.forEach(quiz => {
+            const option = document.createElement('option');
+            option.value = quiz._id;
+            option.textContent = quiz.title;
+            filterSelect.appendChild(option);
+        });
+        
+        // Display registrations
+        displayRegistrations(registrations, quizzes);
+        
+        // Filter functionality
+        filterSelect.addEventListener('change', function() {
+            const filtered = this.value ?
+                registrations.filter(r => r.quizId === this.value) : 
+                registrations;
+            displayRegistrations(filtered, quizzes);
+        });
+    } catch (error) {
+        console.error('Error loading registrations:', error);
+        showAlert('Failed to load registrations', 'danger');
+    }
 }
 
 // Display registrations in table
@@ -333,7 +401,7 @@ function displayRegistrations(registrations, quizzes) {
     
     tbody.innerHTML = '';
     registrations.forEach((reg, index) => {
-        const quiz = quizzes.find(q => q.id === parseInt(reg.quizId));
+        const quiz = quizzes.find(q => q._id === reg.quizId);
         const row = `
             <tr>
                 <td>${index + 1}</td>
@@ -341,10 +409,26 @@ function displayRegistrations(registrations, quizzes) {
                 <td>${reg.email}</td>
                 <td>${reg.mobile}</td>
                 <td>${quiz ? quiz.title : 'N/A'}</td>
-                <td>${reg.college}</td>
+                <td>${reg.college || 'N/A'}</td>
                 <td>${new Date(reg.registrationDate).toLocaleDateString()}</td>
             </tr>
         `;
         tbody.innerHTML += row;
     });
+}
+
+// Show alert message
+function showAlert(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
+    alertDiv.style.zIndex = '9999';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 3000);
 }

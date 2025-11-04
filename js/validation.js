@@ -7,22 +7,35 @@ function getQuizIdFromUrl() {
 }
 
 // Load quizzes into select dropdown
-function loadQuizzes() {
+async function loadQuizzes() {
     const quizSelect = document.getElementById('quizSelect');
-    const quizzes = JSON.parse(localStorage.getItem('quizzes')) || [];
     const preselectedQuizId = getQuizIdFromUrl();
     
-    quizzes.forEach(quiz => {
-        const option = document.createElement('option');
-        option.value = quiz.id;
-        option.textContent = `${quiz.title} - ${quiz.date}`;
+    try {
+        const response = await fetch('/api/quizzes');
+        const quizzes = await response.json();
         
-        if (preselectedQuizId && parseInt(preselectedQuizId) === quiz.id) {
-            option.selected = true;
-        }
-        
-        quizSelect.appendChild(option);
-    });
+        quizzes.forEach(quiz => {
+            const option = document.createElement('option');
+            option.value = quiz._id;
+            option.textContent = `${quiz.title} - ${formatDate(quiz.date)}`;
+            
+            if (preselectedQuizId && preselectedQuizId === quiz._id) {
+                option.selected = true;
+            }
+            
+            quizSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading quizzes:', error);
+        quizSelect.innerHTML = '<option value="">Failed to load quizzes</option>';
+    }
+}
+
+// Format date helper
+function formatDate(dateString) {
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString('en-US', options);
 }
 
 // Validation functions
@@ -271,27 +284,43 @@ document.addEventListener('DOMContentLoaded', function() {
             registrationDate: new Date().toISOString()
         };
         
-        // In production, send to backend API
-        // For demo, save to localStorage
-        const registrations = JSON.parse(localStorage.getItem('registrations')) || [];
-        registrations.push(registrationData);
-        localStorage.setItem('registrations', JSON.stringify(registrations));
-        
-        // Get quiz name for success message
-        const quizzes = JSON.parse(localStorage.getItem('quizzes')) || [];
-        const selectedQuiz = quizzes.find(q => q.id === parseInt(quizSelect));
-        const quizName = selectedQuiz ? selectedQuiz.title : 'the quiz';
-        
-        // Show success modal
-        document.getElementById('successMessage').textContent = 
-            `You have successfully registered for "${quizName}".`;
-        
-        const successModal = new bootstrap.Modal(document.getElementById('successModal'));
-        successModal.show();
-        
-        // Reset form
-        form.reset();
-        form.querySelectorAll('.is-valid').forEach(el => el.classList.remove('is-valid'));
+        // Send to backend API
+        try {
+            const response = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(registrationData)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                // Get quiz name for success message
+                const quizResponse = await fetch(`/api/quizzes/${quizSelect}`);
+                const quiz = await quizResponse.json();
+                const quizName = quiz ? quiz.title : 'the quiz';
+                
+                // Show success modal
+                document.getElementById('successMessage').textContent = 
+                    `You have successfully registered for "${quizName}".`;
+                
+                const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                successModal.show();
+                
+                // Reset form
+                form.reset();
+                form.querySelectorAll('.is-valid').forEach(el => el.classList.remove('is-valid'));
+            } else {
+                document.getElementById('errorMessage').textContent = result.error || 'Registration failed. Please try again.';
+                document.getElementById('errorAlert').classList.remove('d-none');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        } catch (error) {
+            console.error('Error submitting registration:', error);
+            document.getElementById('errorMessage').textContent = 'An error occurred. Please try again later.';
+            document.getElementById('errorAlert').classList.remove('d-none');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
     });
     
     // Reset button
