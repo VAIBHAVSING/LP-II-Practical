@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![QuizMaster Logo](https://img.shields.io/badge/QuizMaster-v2.0-blueviolet?style=for-the-badge)
+![QuizMaster Logo](https://img.shields.io/badge/QuizMaster-v2.1-blueviolet?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 ![Node.js](https://img.shields.io/badge/Node.js-v18+-brightgreen?style=for-the-badge&logo=node.js)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green?style=for-the-badge&logo=mongodb)
@@ -23,29 +23,36 @@ QuizMaster is a comprehensive online quiz platform designed for educational inst
 
 - 🎨 **Modern UI** with Dark/Light theme toggle
 - 📱 **Fully Responsive** design (Bootstrap 5)
-- 🔐 **Admin Dashboard** with CRUD operations
+- 🔐 **Dual Authentication** - Separate student & admin portals
+- 👤 **Student Dashboard** with profile and quiz management
 - 🎯 **Smart Filtering** by category and difficulty
 - 🔍 **Real-time Search** functionality
 - ✅ **Form Validation** with instant feedback
 - 🌐 **RESTful API** architecture
 - ☁️ **MongoDB Atlas** cloud database
 - 🚀 **Easy Deployment** ready
+- 🔒 **Secure Sessions** with remember me option
 
 ---
 
 ## 📋 Features
 
 ### For Students
+- ✅ **Dedicated Registration** - Create account with instant access
+- ✅ **Student Login Portal** - Secure authentication with session management
+- ✅ **Personal Dashboard** - View profile, statistics, and available quizzes
 - ✅ Browse quizzes by category, difficulty, and keywords
 - ✅ Real-time search with instant results
-- ✅ Register for quizzes with validated forms
+- ✅ Register for quizzes with one click
 - ✅ View quiz details (duration, questions, passing score)
+- ✅ **Change Password** - Update credentials securely
 - ✅ Modern, intuitive user interface
 - ✅ Dark/Light theme support
 
 ### For Administrators
-- ✅ Secure admin authentication
-- ✅ Dashboard with statistics and analytics
+- ✅ **Admin Registration** - Self-service admin account creation
+- ✅ **Secure Admin Login** - Enhanced authentication portal
+- ✅ Separate admin dashboard with statistics and analytics
 - ✅ Create, Read, Update, Delete (CRUD) quizzes
 - ✅ View all quiz registrations
 - ✅ Filter registrations by quiz
